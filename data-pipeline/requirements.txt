@@ -1,0 +1,7 @@
+google-api-python-client
+google-auth
+google-cloud-storage
+apache-beam[gcp]
+isodate
+flask
+functions-framework==3.*
