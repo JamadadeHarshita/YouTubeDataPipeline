@@ -1,0 +1,261 @@
+`youtubede-444916.youtube_datasets.channel_stats`
+
+
+CHANNEL STATS 
+
+1.   Identify Channels That Underperform Based on Subscriber to View Ratio
+
+WITH AvgRatio AS (
+    SELECT
+        AVG(CAST(total_views AS INT64) / NULLIF(subscribers, 0)) AS avg_ratio
+    FROM
+        `youtubede-444916.youtube_datasets.channel_stats`
+
+    WHERE
+        subscribers > 0
+)
+SELECT
+    channel_id,
+    title,
+    subscribers,
+    total_views,
+    CAST(total_views AS INT64) / NULLIF(subscribers, 0) AS subscriber_to_view_ratio
+FROM
+    `youtubede-444916.youtube_datasets.channel_stats`
+, AvgRatio
+WHERE
+    subscribers > 0
+    AND (CAST(total_views AS INT64) / NULLIF(subscribers, 0)) < AvgRatio.avg_ratio;
+
+
+
+2. Find the Most Diverse Content Creators
+
+WITH TopicSplit AS (
+    SELECT
+        channel_id,
+        title,
+        SPLIT(topics, ',') AS topic_array
+    FROM
+        `youtubede-444916.youtube_datasets.channel_stats`
+),
+TopicCount AS (
+    SELECT
+        channel_id,
+        title,
+        ARRAY_LENGTH(ARRAY(SELECT DISTINCT topic FROM UNNEST(topic_array) AS topic)) AS unique_topics_count
+    FROM
+        TopicSplit
+)
+SELECT
+    channel_id,
+    title,
+    unique_topics_count
+FROM
+    TopicCount
+ORDER BY
+    unique_topics_count DESC
+LIMIT 3;
+
+
+
+3.  Determine Channels with High Engagement Potential
+
+SELECT
+    channel_id,
+    title,
+    avg_views,
+    video_count,
+    total_views
+FROM
+    `youtubede-444916.youtube_datasets.channel_stats`
+WHERE
+    video_count > 0
+    AND avg_views > (0.8 * total_views / video_count);
+
+
+
+4. Channel Performance by Topics
+
+
+WITH TopicAnalysis AS (
+    SELECT
+        topic,
+        AVG(subscribers) AS avg_subscribers,
+        AVG(avg_views) AS avg_avg_views,
+        AVG(total_views) AS avg_total_views
+    FROM (
+        SELECT
+            channel_id,
+            SPLIT(topics, ',') AS topic_array,
+            subscribers,
+            avg_views,
+            total_views
+        FROM
+            `youtubede-444916.youtube_datasets.channel_stats`
+        WHERE
+            topics IS NOT NULL
+    ), UNNEST(topic_array) AS topic
+    GROUP BY
+        topic
+)
+SELECT
+    topic,
+    ROUND(avg_subscribers) AS avg_subscribers,
+    ROUND(avg_avg_views) AS avg_avg_views,
+    ROUND(avg_total_views) AS avg_total_views
+FROM
+    TopicAnalysis
+ORDER BY
+    avg_subscribers DESC;
+
+
+5. Regional Subscriber Insights
+
+WITH CountrySubscribers AS (
+    SELECT
+        country,
+        SUM(subscribers) AS total_subscribers
+    FROM
+        `youtubede-444916.youtube_datasets.channel_stats`
+    WHERE
+        country IS NOT NULL
+    GROUP BY
+        country
+),
+GlobalSubscribers AS (
+    SELECT
+        SUM(total_subscribers) AS global_total
+    FROM
+        CountrySubscribers
+)
+SELECT
+    country,
+    total_subscribers,
+    ROUND((total_subscribers / global_total) * 100, 2) AS percentage_contribution
+FROM
+    CountrySubscribers, GlobalSubscribers
+ORDER BY
+    percentage_contribution DESC;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VIDEO STATS
+
+
+`youtubede-444916.youtube_datasets.video_stats`
+
+
+1. Top Performing Videos
+
+SELECT 
+    title, 
+    views, 
+    likes, 
+    comments 
+FROM 
+    `youtubede-444916.youtube_datasets.video_stats`
+ORDER BY 
+    views DESC
+LIMIT 10;
+
+
+
+2.  Monthly Video Uploads
+
+SELECT 
+    year, 
+    month, 
+    COUNT(video_id) AS videos_uploaded 
+FROM 
+    `youtubede-444916.youtube_datasets.video_stats`
+GROUP BY 
+    year, month
+ORDER BY 
+    year, month;
+
+
+3. Viral Videos Analysis
+
+SELECT 
+    title, 
+    views, 
+    likes, 
+    comments, 
+    metrics 
+FROM 
+    `youtubede-444916.youtube_datasets.video_stats`
+WHERE 
+    isviral = 'viral'
+ORDER BY 
+    metrics DESC;
+
+
+4. Category Performance
+
+SELECT 
+    category_id, 
+    SUM(views) AS total_views, 
+    COUNT(video_id) AS video_count 
+FROM 
+    `youtubede-444916.youtube_datasets.video_stats`
+GROUP BY 
+    category_id
+ORDER BY 
+    total_views DESC;
+
+
+5. Day of the Week Analysis
+
+SELECT 
+    weekday, 
+    AVG(views) AS avg_views, 
+    AVG(likes) AS avg_likes 
+FROM 
+    `youtubede-444916.youtube_datasets.video_stats`
+GROUP BY 
+    weekday
+ORDER BY 
+    avg_views DESC;
+
+
+6. Long vs. Short Video Performance
+
+SELECT 
+    CASE 
+        WHEN duration > 10 THEN 'Long Videos'
+        ELSE 'Short Videos'
+    END AS video_type, 
+    AVG(views) AS avg_views, 
+    AVG(likes) AS avg_likes, 
+    AVG(comments) AS avg_comments 
+FROM 
+    `youtubede-444916.youtube_datasets.video_stats`
+GROUP BY 
+    video_type;
+
+
+7. Tags Analysis
+
+SELECT 
+    tags, 
+    COUNT(video_id) AS video_count 
+FROM 
+    `youtubede-444916.youtube_datasets.video_stats`
+GROUP BY 
+    tags
+ORDER BY 
+    video_count DESC
+LIMIT 10;
+
